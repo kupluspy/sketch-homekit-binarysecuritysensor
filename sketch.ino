@@ -24,7 +24,8 @@ int pinAlarmanlageStatus = D1;
 int pinAlarmanlageAusgeloest = D2;
 
 // Alarmanlagen Status
-String securitystatecurrent = "3";
+String securitystatecurrent = "3"; // Default: Disarm
+String securitystatetarget = "3"; // Default: Disarm
 
 // Webserver
 WiFiServer server(80);
@@ -32,19 +33,19 @@ WiFiServer server(80);
 // Sender
 HTTPClient sender;
 
-void push(){
+void checkState(){
 
   //Hier wird der Wert an die Smarthome-Umgebung übertragen
 
   if (digitalRead(pinAlarmanlageStatus) == LOW)
     {
       // Open - Aus - Disarmed
-      securitystatecurrent = "3";
+      securitystatetarget = "3";
     }
   else
     {
        // Closed - An - Away
-       securitystatecurrent = "1";
+       securitystatetarget = "1";
     }
 
   if (digitalRead(pinAlarmanlageAusgeloest) == LOW)
@@ -54,10 +55,32 @@ void push(){
   else
     {
        // Closed - Ausgeloest - Triggered
-       securitystatecurrent = "4";
+       securitystatetarget = "4";
     }
-            
-  if (sender.begin("http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&currentstate=" + securitystatecurrent)){
+
+  // Wenn Alarm ausgelöst
+  if (securitystatetarget == "4")
+    {
+      // Send Current
+      sendRequest("http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&currentstate=" + securitystatetarget);
+    }
+  else
+    {
+      // Send Target
+      sendRequest("http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&targetstate=" + securitystatetarget);
+
+      delay(1000);
+      securitystatecurrent = securitystatetarget;
+      
+      // Send Current
+      sendRequest("http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&currentstate=" + securitystatecurrent);
+    }
+
+}
+
+void sendRequest(String url) {
+
+    if (sender.begin(url)){
 
     // HTTP-Code der Response speichern
     int httpCode = sender.GET();
@@ -88,7 +111,7 @@ void push(){
   }else {
     // HTTP-Verbindung konnte nicht hergestellt werden!
   }
-
+  
 }
 
 
@@ -123,7 +146,7 @@ void loop() {
   delay(500);                       // wait 
   digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
   
-  push();
+  checkState();
   
   WiFiClient client = server.available();
   if (client) {
@@ -176,6 +199,7 @@ void loop() {
           
           client.println("<br><h3>Alarmanlage Status &rArr; " + securitystatecurrent + "</h3><h4>(Stay=0 / Away=1 / Night=2 / Disarmed=3 / Triggered=4)</h4>");  
 
+          client.println("<br><h3>Request Webhooks:</h3><h4>http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;targetstate=" + securitystatetarget + "</h4>");
           client.println("<br><h3>Request Webhooks:</h3><h4>http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;currentstate=" + securitystatecurrent + "</h4>"); 
 
           client.println("<br><h3>Sketch: Von Jan mit Liebe gemacht</h3></font></center></body></html>"); 
