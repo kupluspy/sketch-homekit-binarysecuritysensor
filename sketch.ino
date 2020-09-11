@@ -27,11 +27,49 @@ int pinAlarmanlageAusgeloest = D2;
 String securitystatecurrent = "3"; // Default: Disarm
 String securitystatetarget = "3"; // Default: Disarm
 
+// Error Handling
+String wlanstatus = "";
+bool wlanerror = false;
+String securitystatus = "";
+bool securityerror = false;
+String httprequeststatus = "";
+bool httprequesterror = false;
+
 // Webserver
 WiFiServer server(80);
 
 // Sender
 HTTPClient sender;
+
+
+void connectWifi() {
+  
+  WiFi.persistent(false);   // daten nicht in Flash speichern
+  WiFi.mode(WIFI_STA);
+
+  WiFi.begin(ssid, password);
+
+  // Verbindungsversuch max 5 Sekunden
+  for (int x = 0; x < 10; x++) {
+    delay(500);
+  }
+
+  // Prüfe Verbindung
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    // no connection
+    wlanstatus = "Nicht Verbunden";
+    wlanerror = true;
+  }
+  else
+  {
+    // connected
+    wlanstatus = "Verbunden";
+    wlanerror = false;
+  }
+
+}
+
 
 void checkState(){
 
@@ -76,6 +114,8 @@ void checkState(){
       sendRequest("http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&currentstate=" + securitystatecurrent);
     }
 
+  securitystatus = "Erfolgreich";
+
 }
 
 void sendRequest(String url) {
@@ -97,19 +137,22 @@ void sendRequest(String url) {
         // String vom Webseiteninhalt speichern
         String payload = sender.getString();
 
-          
+        httprequeststatus = "Erfolgreich";  
+        httprequesterror = false;
       }
       
     }else{
       // Falls HTTP-Error
-      // HTTP-Error: ", sender.errorToString(httpCode).c_str()
+      httprequeststatus = "HTTP-Error: ", sender.errorToString(httpCode).c_str();
+      httprequesterror = true;
     }
 
     // Wenn alles abgeschlossen ist, wird die Verbindung wieder beendet
     sender.end();
     
   }else {
-    // HTTP-Verbindung konnte nicht hergestellt werden!
+    httprequeststatus = "HTTP-Verbindung konnte nicht hergestellt werden!";
+    httprequesterror = true;
   }
   
 }
@@ -126,12 +169,7 @@ void setup() {
   pinMode(pinAlarmanlageAusgeloest, INPUT);
   
   // Connect to WiFi network
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
+  if (WiFi.status() != WL_CONNECTED) connectWifi();
 
   // Start the server
   server.begin();
@@ -142,12 +180,64 @@ void setup() {
 
 void loop() {
 
-  digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
-  delay(500);                       // wait 
-  digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
-  
+  // Error Handling LED
+  if (wlanerror == false & securityerror == false & httprequesterror == false)
+  {
+    // Alles ok
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+  }
+  else if (wlanerror == true)
+  {
+    // Doppelblinken bei WLAN Problem
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+    delay(100);                       // wait 
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+  }
+  else if (httprequesterror == true)
+  {
+    // Dreifachblinken bei HttpRequest Problem
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+    delay(100);                       // wait 
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+    delay(100);                       // wait 
+    digitalWrite(LED_BUILTIN, LOW);   // turn the LED on
+    delay(200);                       // wait 
+    digitalWrite(LED_BUILTIN, HIGH);    // turn the LED off
+  }
+  else
+  {
+    // Kein Blinken bei allen anderen Problemen
+  }
+
+  // Check WiFi network
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    // no connection
+    wlanstatus = "Nicht Verbunden";
+    wlanerror = true;
+    connectWifi();
+  }
+  else
+  {
+    // connected
+    wlanstatus = "Verbunden";
+    wlanerror = false;
+  }
+
+  // Check Pin state and send request
   checkState();
-  
+
+  // Web UI
   WiFiClient client = server.available();
   if (client) {
 
@@ -165,12 +255,32 @@ void loop() {
 
           client.println("<!DOCTYPE HTML>");
           client.println("<html>");
-          client.println("<head><meta http-equiv=refresh content=15></head><body bgcolor=33363B><center><font face=Ubuntu color=FFFFFF><h1>Status Alarmanlage</h1><h3>Hardware: Wemos D1 Mini</h3>");
+          client.println("<head><meta http-equiv=refresh content=15></head><body bgcolor=white>");
 
+          client.println("<h1>Status Alarmanlage</h1><h3>Hardware: Wemos D1 Mini</h3>");
+          
+          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>STATUS LED</b><br>");
+          client.println("- 1-fach Blinken &rArr; Alles ok<br>");
+          client.println("- 2-fach Blinken &rArr; WLAN-Verbindungsproblem<br>");
+          client.println("- 3-fach Blinken &rArr; HttpRequest Problem<br>");
+          client.println("- Kein Blinken &rArr; Sonstiges Problem<br>");
+          client.println("</div>");
+          
           client.println("<br>");
 
-          client.println("<h3>Alarmanlage Status (D1) &rArr; ");
+          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>WLAN</b><br>");
+          client.println("Status &rArr; " + wlanstatus + "<br>");
+          client.println("</br>");
+          client.println("SSID &rArr; " + String(ssid) + "<br>");
+          client.println("</div>");
+          
+          client.println("<br>");
 
+          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>INPUT - PIN</b><br>");
+          client.println("Status &rArr; " + securitystatus + "<br>");
+          client.println("</br>");
+          client.println("Messintervall &rArr; " + String(wait / 1000) + " sec<br>");
+          client.println("Alarmanlage Status (D1) &rArr; ");
           if (digitalRead(pinAlarmanlageStatus) == LOW)
             {
               client.println("Open"); 
@@ -179,11 +289,9 @@ void loop() {
             {
               client.println("Closed"); 
             }
-
-          client.println("</h3>");
+          client.println("</br>");
           
-          client.println("<h3>Alarmanlage Ausgeloest (D2) &rArr; "); 
-
+          client.println("Alarmanlage Ausgeloest (D2) &rArr; "); 
           if (digitalRead(pinAlarmanlageAusgeloest) == LOW)
             {
               client.println("Open"); 
@@ -192,17 +300,22 @@ void loop() {
             {
               client.println("Closed"); 
             }
-
-          client.println("</h3>");
-
-          client.println("<br><h3>Messintervall &rArr; " + String(wait / 1000) + " sec</h3>");
+          client.println("</br>");
+          client.println("Alarmanlage Status &rArr; " + securitystatecurrent + " (Stay=0 / Away=1 / Night=2 / Disarmed=3 / Triggered=4)<br>");  
+          client.println("</div>");
           
-          client.println("<br><h3>Alarmanlage Status &rArr; " + securitystatecurrent + "</h3><h4>(Stay=0 / Away=1 / Night=2 / Disarmed=3 / Triggered=4)</h4>");  
+          client.println("</br>");
 
-          client.println("<br><h3>Request Webhooks:</h3><h4>http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;targetstate=" + securitystatetarget + "</h4>");
-          client.println("<br><h3>Request Webhooks:</h3><h4>http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;currentstate=" + securitystatecurrent + "</h4>"); 
+          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>OUTPUT - HTTP REQUEST</b><br>");
+          client.println("Status &rArr; " + httprequeststatus + "<br>");
+          client.println("</br>");
+          client.println("Request Webhooks &rArr; http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;targetstate=" + securitystatetarget + "<br>");
+          client.println("Request Webhooks &rArr; http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;currentstate=" + securitystatecurrent + "<br>"); 
+          client.println("</div>");
+          
+          client.println("<br><h3>Sketch: Von Jan mit Liebe gemacht</h3>"); 
 
-          client.println("<br><h3>Sketch: Von Jan mit Liebe gemacht</h3></font></center></body></html>"); 
+          client.println("</body></html>"); 
           break;
         }
         if (c == '\n') {
