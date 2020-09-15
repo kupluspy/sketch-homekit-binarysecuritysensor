@@ -259,7 +259,8 @@ void loop() {
 
           client.println("<h1>Status Alarmanlage</h1><h3>Hardware: Wemos D1 Mini</h3>");
           
-          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>STATUS LED</b><br>");
+          client.println("<div style=\"width:150px;background:#b3d9ff;padding:10px;float: left;clear: both;text-align: right;\"><b>STATUS LED</b></div>");
+          client.println("<div style=\"width:600px;background:#f2f2f2;padding:10px;float: left;\">");
           client.println("- 1-fach Blinken &rArr; Alles ok<br>");
           client.println("- 2-fach Blinken &rArr; WLAN-Verbindungsproblem<br>");
           client.println("- 3-fach Blinken &rArr; HttpRequest Problem<br>");
@@ -268,7 +269,8 @@ void loop() {
           
           client.println("<br>");
 
-          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>WLAN</b><br>");
+          client.println("<div style=\"width:150px;background:#b3d9ff;padding:10px;float: left;clear: both;text-align: right;\"><b>WLAN</b></div>");
+          client.println("<div style=\"width:600px;background:#f2f2f2;padding:10px;float: left;\">");
           client.println("Status &rArr; " + wlanstatus + "<br>");
           client.println("</br>");
           client.println("SSID &rArr; " + String(ssid) + "<br>");
@@ -276,7 +278,8 @@ void loop() {
           
           client.println("<br>");
 
-          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>INPUT - PIN</b><br>");
+          client.println("<div style=\"width:150px;background:#b3d9ff;padding:10px;float: left;clear: both;text-align: right;\"><b>INPUT</b></div>");
+          client.println("<div style=\"width:600px;background:#f2f2f2;padding:10px;float: left;\">");
           client.println("Status &rArr; " + securitystatus + "<br>");
           client.println("</br>");
           client.println("Messintervall &rArr; " + String(wait / 1000) + " sec<br>");
@@ -306,14 +309,15 @@ void loop() {
           
           client.println("</br>");
 
-          client.println("<div style=\"background:#d9d9d9;padding:10px;\"><b>OUTPUT - HTTP REQUEST</b><br>");
+          client.println("<div style=\"width:150px;background:#b3d9ff;padding:10px;float: left;clear: both;text-align: right;\"><b>OUTPUT</b></div>");
+          client.println("<div style=\"width:600px;background:#f2f2f2;padding:10px;float: left;\">");
           client.println("Status &rArr; " + httprequeststatus + "<br>");
           client.println("</br>");
           client.println("Request Webhooks &rArr; http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;targetstate=" + securitystatetarget + "<br>");
           client.println("Request Webhooks &rArr; http://" + hbip + ":" + hbport + "/?accessoryId=" + hbid + "&amp;currentstate=" + securitystatecurrent + "<br>"); 
           client.println("</div>");
-          
-          client.println("<br><h3>Sketch: Von Jan mit Liebe gemacht</h3>"); 
+
+          client.println("<div style=\"width:550px;padding:10px;float: left;clear: both;\">Sketch: Von Jan mit Liebe gemacht</div>");
 
           client.println("</body></html>"); 
           break;
