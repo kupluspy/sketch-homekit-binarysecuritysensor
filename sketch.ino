@@ -39,6 +39,7 @@ bool httprequesterror = false;
 WiFiServer server(80);
 
 // Sender
+WiFiClient client;
 HTTPClient sender;
 
 
@@ -120,7 +121,7 @@ void checkState(){
 
 void sendRequest(String url) {
 
-    if (sender.begin(url)){
+    if (sender.begin(client, url)){
 
     // HTTP-Code der Response speichern
     int httpCode = sender.GET();
